@@ -207,4 +207,11 @@ the condition ```if ((trk.hits >= min_hits) and (trk.no_losses <=max_age)) ``` i
 
 The main issue is occlusion. For example, when one car is passing another car, the two cars can be very close to each other. This can fool the detector to output a single(and bigger bounding) box, instead of two separate bounding boxes. In addition, the tracking algorithm may treat this detection as a new detection and set up a new track.  The tracking algorithm may fail again when one the passing car moves away from another car. 
 
+## Changes
+- detector.py: Able to detect all classes above a threshold 'score_thresh' (default value of 0.3) defined in 'get_localization'.
+          The get_localization function also returns an 'idx_vector' containing an array of indices for which the localization process is detected. This is useful for mapping the bounding boxes to it's corresponding classes and scores so it can be plotted on the image.
+-renamed 'main.py' to 'main_tracker' and made it into a class named 'GlobalTracker()'. We can call this directly.
+    - added a input argument to pass the maximum number of trackings that can be performed at any given time. with 'MAX_TRACKERS'
+    - modified the 'pipeline' function to return an array of [_boxes, out_scores_arr, out_classes_arr, img]
+
 
