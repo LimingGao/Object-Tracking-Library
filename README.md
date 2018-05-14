@@ -1,71 +1,59 @@
-# Tracking for pre-detected objects
+# Real Time Object Tracking
 
 ## Overview
-This project is a forked and modified version of the git repository by [kcg2015](https://github.com/kcg2015/Vehicle-Detection-and-Tracking). The repository has been simplified to track multiple objects and organized into classes for easier usage in other packages. The tracking algorithm used here is a simple Kalman Filter.
+This project is a forked and modified version of the git repository by [kcg2015](https://github.com/kcg2015/Vehicle-Detection-and-Tracking). The repository has been simplified to track multiple objects in real time and organized into classes for easier usage in other packages. The tracking algorithm used here is a simple Kalman Filter.
 
 
 
 ## Quick Start
 To incorporate the tracking into your own projects, we assume you have the output bounding boxes using a prebuilt model such as Faster R-CNN or SSD. See the [Tensorflow Object Detection Model Zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) for more details.
 
-
-
-
-## Pipeline
-
-We include two important design parameters, ```min_hits``` and ```max_age```, in the pipe line.  The parameter ```min_hits``` is the number of consecutive matches needed to establish a track. The parameter ```max_age``` is number of consecutive unmatched detection before a track is deleted. Both parameters need to be tuned to improve the tracking and detection performance.
-
-The pipeline deals with matched detection, unmatched detection, and unmatched trackers sequentially. We annotate the tracks that meet the ```min_hits``` and ```max_age``` condition. Proper book keep is also needed to deleted the stale tracks. 
-
-The following examples shows the process of the pipeline. When the car is first detected in the first video frame, running the following line of code returns an empty list , an one-element list, and an empty list  for ```matched```, ```unmatched_dets```, and ```unmatched_trks```, respectively. 
-
+**Import and initialize the Tracker**
+Assuming that you have the repository code in a folder called 'Tracking' and it is in your system path, import then create an instance. We can also specify the ```MAX_TRACKERS``` to indicate the maximum number of objects we can track at a time. There is no limit to the number of objects that can be tracked, however, it may impact performance if running in real time.
 ```
-matched, unmatched_dets, unmatched_trks \
-    = assign_detections_to_trackers(x_box, z_box, iou_thrd = 0.3) 
+from Tracking.main_tracker import GlobalTracker
+global_tracker = GlobalTracker(MAX_TRACKERS=15)
 ```
-We thus have a situation of unmatched detections. Unmatched detections are processed by the following code block:
 
+**Run the session. Output bounding boxes**
+First, we need to run our model and output the bounding boxes as well as additional information. An example implementation can be found **coming soon**.
 ```
-if len(unmatched_dets)>0:
-        for idx in unmatched_dets:
-            z = z_box[idx]
-            z = np.expand_dims(z, axis=0).T
-            tmp_trk = Tracker() # Create a new tracker
-            x = np.array([[z[0], 0, z[1], 0, z[2], 0, z[3], 0]]).T
-            tmp_trk.x_state = x
-            tmp_trk.predict_only()
-            xx = tmp_trk.x_state
-            xx = xx.T[0].tolist()
-            xx =[xx[0], xx[2], xx[4], xx[6]]
-            tmp_trk.box = xx
-            tmp_trk.id = track_id_list.popleft() # assign an ID for the tracker
-            tracker_list.append(tmp_trk)
-            x_box.append(xx)
+[bounding_boxes, scores, class_labels,num_detections] = sess.run(
+              [boxes, scores, classes, num_detections],
+               feed_dict={image_tensor: image_np_expanded})
 ```
-This code block carries out two important tasks, 1) creating a new tracker ```tmp_trk``` for the detection; 2) carrying out the Kalman filter's predict stage ```tmp_trk.predict_only()```. Note that this newly created track is still in probation period, i.e., ```trk.hits =0```, so this track is yet established after the end pipeline. The output image is the same as the input image - the detection bounding box is not annotated.
-<img src="example_imgs/frame_01_det_track.png" alt="Drawing" style="width: 150px;"/>
 
-When the car is  detected again in the second video frame, running the following ```assign_detections_to_trackers``` returns an one-element list , an empty list, and an empty list for matched, unmatched_dets, and unmatched_trks, respectively. As shown in the following figure, we have a matched detection, which will be processed by the following code block:
 
+**Feed the output into the tracking pipeline.**
+The tracking pipeline automatically runs the Kalman filter and returns the updated set of bounding boxes.
 ```
-if matched.size >0:
-        for trk_idx, det_idx in matched:
-            z = z_box[det_idx]
-            z = np.expand_dims(z, axis=0).T
-            tmp_trk= tracker_list[trk_idx]
-            tmp_trk.kalman_filter(z)
-            xx = tmp_trk.x_state.T[0].tolist()
-            xx =[xx[0], xx[2], xx[4], xx[6]]
-            x_box[trk_idx] = xx
-            tmp_trk.box =xx
-            tmp_trk.hits += 1
+[bounding_boxes, scores, class_labels,num_detections,
+img] = global_tracker.pipeline(bounding_boxes,
+                             scores,
+                             class_labels,
+                             image_np,
+                             score_thresh=0.5)
 ```
-This code block carries out two important tasks, 1) carrying out the Kalman filter's prediction and update stages ```tmp_trk.kalman_filter()```; 2) increasing the hits of the track by one ```tmp_trk.hits +=1```. With this update,  
-the condition ```if ((trk.hits >= min_hits) and (trk.no_losses <=max_age)) ``` is statified, so the track is fully established. As the result, the bounding box is annotated in the output image, as shown in the figure below.
-<img src="example_imgs/frame_02_det_track.png" alt="Drawing" style="width: 150px;"/>
-## Issues
+**Display the tracking in real time.**
+```
+while True:
+    if bounding_boxes != ():    
+        output_frame = vis_util.visualize_boxes_and_labels_on_image_array(
+          img,
+          bounding_boxes,
+          class_labels.astype(np.int32),
+          scores,
+          category_labels,
+          use_normalized_coordinates=True,
+          line_thickness=3,
+          min_score_thresh=0.1)
+    cv2.imshow('frame', output_frame)
 
-The main issue is occlusion. For example, when one car is passing another car, the two cars can be very close to each other. This can fool the detector to output a single(and bigger bounding) box, instead of two separate bounding boxes. In addition, the tracking algorithm may treat this detection as a new detection and set up a new track.  The tracking algorithm may fail again when one the passing car moves away from another car. 
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        done = True
+        break
+```                  
+           
 
 ## Changes
 - detector.py: Able to detect all classes above a threshold 'score_thresh' (default value of 0.3) defined in 'get_localization'.
