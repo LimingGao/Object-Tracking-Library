@@ -25,7 +25,7 @@ class GlobalTracker(object):
 
         self.MAX_TRACKERS = MAX_TRACKERS
         # Modified list for tracker IDs.
-        self.track_id_list = deque(list(range(0,MAX_TRACKERS)))
+        self.track_id_list = deque(list(range(0,self.MAX_TRACKERS)))
 
 
     def assign_detections_to_trackers(self,trackers, detections, iou_thrd = 0.3):
