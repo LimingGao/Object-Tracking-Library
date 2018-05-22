@@ -1,11 +1,11 @@
 # Real Time Object Tracking
 
+**TODO: Add sample code**
+
 ## Overview
 This project is a forked and modified version of the git repository by [kcg2015](https://github.com/kcg2015/Vehicle-Detection-and-Tracking). The repository has been simplified to track multiple objects in real time and organized into classes for easier usage in other packages. The tracking algorithm used here is a simple Kalman Filter.
 
 ![Real time video output from a webcam with the bounding boxes overlayed using the tracking algorithm described here](https://github.com/omarabid59/Object-Tracking-Library/blob/master/tracking_output.png)
-
-
 
 ## Quick Start
 To incorporate the tracking into your own projects, we assume you have the output bounding boxes using a prebuilt model such as Faster R-CNN or SSD. See the [Tensorflow Object Detection Model Zoo](https://github.com/tensorflow/models/blob/master/research/object_detection/g3doc/detection_model_zoo.md) for more details.
