@@ -77,7 +77,8 @@ class GlobalTracker(object):
         return matches, np.array(unmatched_detections), np.array(unmatched_trackers)
 
 
-    def pipeline(self, boxes,scores,classes,img, iou_threshold = 0.3, FaceTracker = False):
+    def pipeline(self, boxes,scores,classes,img, iou_threshold = 0.3, FaceTracker = False,
+                return_tracker_id = False):
         """Pipeline function for detection and tracking
 
         Args:
@@ -86,6 +87,8 @@ class GlobalTracker(object):
             classes: Class index.
             img: Input image
             iou_threshold: Detection overlap threshold
+            return_tracker_id: If enabled, will return the tracker id. Used for compatibility for older versions
+            of our code.
 
         Returns:
             o_boxes: Tracked bounding boxes. Size (N)
@@ -164,6 +167,7 @@ class GlobalTracker(object):
         out_boxes = []
         out_scores = []
         out_classes = []
+        out_trk_id = []
         for trk in self.tracker_list:
             if ((trk.hits >= self.min_hits) and (trk.no_losses <=self.max_age)):
                 good_tracker_list.append(trk)
@@ -174,6 +178,7 @@ class GlobalTracker(object):
                 out_boxes.append(bounding_boxes)
                 out_scores.append(trk.class_scores)
                 out_classes.append(trk.class_labels)
+                out_trk_id.append(trk.id)
         # Book keeping
         deleted_tracks = filter(lambda x: x.no_losses >self.max_age, self.tracker_list)
 
@@ -189,6 +194,7 @@ class GlobalTracker(object):
         out_boxes_arr = np.asarray(out_boxes)
         out_scores_arr = np.asarray(out_scores)
         out_classes_arr = np.asarray(out_classes)
+        out_trk_id_list = list(out_trk_id)
 
         # Normalize the box values. Copy to new array to prevent overwriting the old one.
         if out_boxes_arr.size > 0: # Check to ensure array isn't empty.
@@ -201,4 +207,7 @@ class GlobalTracker(object):
             o_boxes = np.asarray([]) # Return an empty array
 
         # Note here that we return 'o_boxes' rather than 'out_boxes'
-        return o_boxes, out_scores_arr, out_classes_arr, img
+        if return_tracker_id:
+            return out_trk_id_list, o_boxes, out_scores_arr, out_classes_arr, img
+        else:
+            return o_boxes, out_scores_arr, out_classes_arr, img
